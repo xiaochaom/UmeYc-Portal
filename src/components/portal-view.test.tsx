@@ -15,9 +15,12 @@ vi.mock('../lib/menu-state', () => ({
   isSteamBlockingUI: vi.fn(),
 }));
 vi.mock('./reader-input', () => ({ ReaderInput: () => <div data-testid="reader-input" /> }));
-vi.mock('./url-modal', () => ({ UrlModal: () => <div>url panel</div> }));
+vi.mock('./native-panel', () => ({
+  NativePanel: ({ panel }: { panel: string }) => (
+    <div data-testid="native-panel">{panel} modal</div>
+  ),
+}));
 vi.mock('./phone-url-modal', () => ({ PhoneUrlModal: () => <div>phone panel</div> }));
-vi.mock('./local-files-modal', () => ({ LocalFilesModal: () => <div>files panel</div> }));
 
 import { PortalView, PortalViewOuter } from './portal-view';
 import { StateManager } from 'cotton-box';
@@ -151,7 +154,7 @@ describe('PortalView and PortalViewOuter', () => {
   it('hides active Portal panels while Steam blocking UI is shown', () => {
     vi.mocked(isSteamBlockingUI).mockReturnValue(true);
     vi.mocked(useGlobalState).mockReturnValue([
-      { ...createState(ViewMode.Sidebar), activePanel: 'url' },
+      { ...createState(ViewMode.Sidebar), activePanel: 'phone' },
       vi.fn(),
     ] as never);
     const { getByLabelText } = render(<PortalView />);
@@ -159,7 +162,7 @@ describe('PortalView and PortalViewOuter', () => {
     expect(setVisible).toHaveBeenLastCalledWith(false);
   });
 
-  it.each(['url', 'phone', 'files'] as const)(
+  it.each(['phone'] as const)(
     'shows %s only in the left reader area while keeping QAM open',
     (activePanel) => {
       getGamepadNavigationTrees.mockReturnValue([qamTree()]);
@@ -178,6 +181,21 @@ describe('PortalView and PortalViewOuter', () => {
       expect(setVisible).toHaveBeenLastCalledWith(false);
       expect(queryByTestId('reader-input')).toBeNull();
       expect(getOpenSideMenu()).toBe(2);
+    },
+  );
+
+  it.each(['url', 'files'] as const)(
+    'opens %s as a native modal and suspends the reader',
+    (activePanel) => {
+      vi.mocked(useGlobalState).mockReturnValue([
+        { ...createState(ViewMode.Sidebar), activePanel },
+        vi.fn(),
+      ] as never);
+      const { getByTestId, queryByLabelText, queryByTestId } = render(<PortalView />);
+      expect(getByTestId('native-panel')).toHaveTextContent(`${activePanel} modal`);
+      expect(queryByLabelText('Portal 左侧面板')).toBeNull();
+      expect(queryByTestId('reader-input')).toBeNull();
+      expect(setVisible).toHaveBeenLastCalledWith(false);
     },
   );
 

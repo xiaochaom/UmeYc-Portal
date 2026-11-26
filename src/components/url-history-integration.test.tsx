@@ -25,8 +25,8 @@ vi.mock('@decky/ui', () => ({
   Focusable: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 }));
 
-vi.mock('./panel-dialog', () => ({
-  PanelDialog: ({ children, onCancel }: { children: ReactNode; onCancel: () => void }) => (
+vi.mock('./native-dialog', () => ({
+  NativeDialog: ({ children, onCancel }: { children: ReactNode; onCancel: () => void }) => (
     <div>
       <button onClick={onCancel}>关闭</button>
       {children}

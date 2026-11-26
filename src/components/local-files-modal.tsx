@@ -1,5 +1,5 @@
 import { DialogButton, Focusable, ModalRootProps } from '@decky/ui';
-import { PanelDialog } from './panel-dialog';
+import { NativeDialog } from './native-dialog';
 import { FolderPicker } from './folder-picker';
 import { useEffect, useState } from 'react';
 import { FaFolder, FaTrashAlt } from 'react-icons/fa';
@@ -123,6 +123,7 @@ export const LocalFilesModal = (props: ModalRootProps) => {
   if (pickingDirectory)
     return (
       <FolderPicker
+        native
         initial={listing?.directory || '/run/media'}
         onCancel={() => setPickingDirectory(false)}
         onChoose={(path) => {
@@ -133,8 +134,9 @@ export const LocalFilesModal = (props: ModalRootProps) => {
     );
 
   return (
-    <PanelDialog
+    <NativeDialog
       {...props}
+      key={pending ? 'delete' : 'files'}
       strTitle={pending ? '删除本地文件' : '本地文件'}
       strOKButtonText={pending ? '删除文件' : '关闭'}
       strCancelButtonText="取消"
@@ -150,7 +152,10 @@ export const LocalFilesModal = (props: ModalRootProps) => {
           <p style={{ fontSize: 12, opacity: 0.7, overflowWrap: 'anywhere' }}>{pending.path}</p>
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <Focusable
+          flow-children="column"
+          style={{ display: 'flex', flexDirection: 'column', gap: 8 }}
+        >
           <Focusable flow-children="row" style={{ display: 'flex', gap: 8 }}>
             <DialogButton
               onClick={() => setPickingDirectory(true)}
@@ -178,9 +183,10 @@ export const LocalFilesModal = (props: ModalRootProps) => {
           {loading ? (
             <p role="status">正在读取文件…</p>
           ) : (
-            <div
+            <Focusable
+              flow-children="column"
               style={{
-                maxHeight: '42vh',
+                maxHeight: '38vh',
                 overflowY: 'auto',
                 display: 'flex',
                 flexDirection: 'column',
@@ -231,12 +237,12 @@ export const LocalFilesModal = (props: ModalRootProps) => {
                 </Focusable>
               ))}
               {listing?.truncated && <p>文件较多，仅显示前 500 项，请进入更具体的文件夹。</p>}
-            </div>
+            </Focusable>
           )}
-        </div>
+        </Focusable>
       )}
       {error && <p role="alert">{error}</p>}
-    </PanelDialog>
+    </NativeDialog>
   );
 };
 

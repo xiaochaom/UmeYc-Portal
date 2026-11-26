@@ -1,5 +1,5 @@
-import { TextField, ModalRootProps } from '@decky/ui';
-import { PanelDialog } from './panel-dialog';
+import { Focusable, TextField, ModalRootProps } from '@decky/ui';
+import { NativeDialog } from './native-dialog';
 import { useEffect, useState } from 'react';
 
 import { modalWithState } from './modal';
@@ -54,7 +54,7 @@ export const UrlModal = (props: ModalRootProps) => {
   };
 
   return (
-    <PanelDialog
+    <NativeDialog
       {...props}
       strTitle="网页"
       strOKButtonText="打开"
@@ -69,18 +69,20 @@ export const UrlModal = (props: ModalRootProps) => {
         props.closeModal?.();
       }}
     >
-      <TextField
-        label="网址或图片地址"
-        description="输入攻略网页或图片地址；SD 卡上的图片请使用「本地文件」"
-        value={field}
-        disabled={opening}
-        onChange={(e) => setField(e.target.value)}
-      />
-      {error && <p role="alert">{error}</p>}
-      <div style={{ marginTop: 16, borderTop: '1px solid #36404d', paddingTop: 12 }}>
-        <UrlHistoryList opening={opening} onOpen={(address) => void open(address)} />
-      </div>
-    </PanelDialog>
+      <Focusable flow-children="column" style={{ maxHeight: '55vh', overflowY: 'auto' }}>
+        <TextField
+          label="网址或图片地址"
+          description="输入攻略网页或图片地址；SD 卡上的图片请使用「本地文件」"
+          value={field}
+          disabled={opening}
+          onChange={(e) => setField(e.target.value)}
+        />
+        {error && <p role="alert">{error}</p>}
+        <div style={{ marginTop: 16, borderTop: '1px solid #36404d', paddingTop: 12 }}>
+          <UrlHistoryList opening={opening} onOpen={(address) => void open(address)} />
+        </div>
+      </Focusable>
+    </NativeDialog>
   );
 };
 

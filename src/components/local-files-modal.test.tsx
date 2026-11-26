@@ -19,8 +19,8 @@ vi.mock('@decky/ui', () => ({
   Focusable: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 }));
 
-vi.mock('./panel-dialog', () => ({
-  PanelDialog: ({
+vi.mock('./native-dialog', () => ({
+  NativeDialog: ({
     children,
     onOK,
     onCancel,
@@ -122,7 +122,7 @@ describe('local file management', () => {
     expect(getUrlHistory(localStorage)).toEqual([toLocalFileUrl(path)]);
   });
 
-  it('navigates folders and chooses a folder in the same left panel', async () => {
+  it('navigates folders and chooses a folder inside the native modal', async () => {
     render(<LocalFilesModal closeModal={vi.fn()} />);
     await screen.findByRole('button', { name: '打开文件夹 第二章' });
     fireEvent.click(screen.getByText('选择文件夹'));

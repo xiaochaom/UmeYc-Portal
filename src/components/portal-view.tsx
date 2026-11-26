@@ -10,9 +10,8 @@ import { getOpenSideMenu, isSteamBlockingUI, isVirtualKeyboardShowing } from '..
 import { ReaderInput } from './reader-input';
 import { WebHeader, WEB_HEADER_HEIGHT } from './web-header';
 import { rememberPageTitle, rememberUrl, removeUrl } from '../lib/url-history';
-import { UrlModal } from './url-modal';
+import { NativePanel } from './native-panel';
 import { PhoneUrlModal } from './phone-url-modal';
-import { LocalFilesModal } from './local-files-modal';
 import { SCREEN_HEIGHT, SCREEN_WIDTH, ViewMode } from '../lib/util';
 
 interface BrowserProps {
@@ -439,9 +438,7 @@ export const PortalView = () => {
     !!url && visible && !activePanel && !dropdownOpen && !steamBlockingUI && qamOpen;
   const closePanel = () =>
     setGlobalState((state) => ({ ...state, activePanel: undefined, visible: true }));
-  const Panel = activePanel
-    ? { url: UrlModal, phone: PhoneUrlModal, files: LocalFilesModal }[activePanel]
-    : undefined;
+  const nativePanel = activePanel === 'url' || activePanel === 'files' ? activePanel : undefined;
   const localPath = (() => {
     try {
       return localPathFromUrl(url);
@@ -517,7 +514,8 @@ export const PortalView = () => {
           fullscreen={rightStickFullscreen === true && /^https?:\/\//i.test(url)}
         />
       )}
-      {Panel && (
+      {nativePanel && <NativePanel panel={nativePanel} />}
+      {activePanel === 'phone' && (
         <div
           aria-label="Portal 左侧面板"
           style={{
@@ -532,7 +530,7 @@ export const PortalView = () => {
             pointerEvents: 'auto',
           }}
         >
-          <Panel closeModal={closePanel} />
+          <PhoneUrlModal closeModal={closePanel} />
         </div>
       )}
     </>

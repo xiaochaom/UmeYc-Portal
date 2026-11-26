@@ -27,29 +27,29 @@ export default definePlugin(() => {
   const state = new StateManager<State>({
     ...defaultState,
     ...getPersistedPortalState(localStorage),
+    // Opening the reader is session-only, including when upgrading from .26.
+    viewMode: ViewMode.Closed,
   });
 
   let lastUrl: string | undefined;
-  state.watch(
-    ({ viewMode, position, margin, size, url, sidebarVideoSpace, rightStickFullscreen }) => {
-      localStorage.setItem(
-        PORTAL_STORAGE_KEY,
-        JSON.stringify({
-          viewMode: viewMode === ViewMode.Closed ? ViewMode.Closed : ViewMode.Sidebar,
-          position,
-          margin,
-          size,
-          url,
-          sidebarVideoSpace,
-          rightStickFullscreen,
-        }),
-      );
-      if (url !== lastUrl) {
-        lastUrl = url;
-        rememberUrl(localStorage, url);
-      }
-    },
-  );
+  state.watch(({ position, margin, size, url, sidebarVideoSpace, rightStickFullscreen }) => {
+    localStorage.setItem(
+      PORTAL_STORAGE_KEY,
+      JSON.stringify({
+        viewMode: ViewMode.Closed,
+        position,
+        margin,
+        size,
+        url,
+        sidebarVideoSpace,
+        rightStickFullscreen,
+      }),
+    );
+    if (url !== lastUrl) {
+      lastUrl = url;
+      rememberUrl(localStorage, url);
+    }
+  });
 
   routerHook.addGlobalComponent('Portal', () => {
     return (

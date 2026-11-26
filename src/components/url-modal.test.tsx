@@ -18,8 +18,8 @@ vi.mock('@decky/ui', () => ({
   ),
 }));
 
-vi.mock('./panel-dialog', () => ({
-  PanelDialog: ({
+vi.mock('./native-dialog', () => ({
+  NativeDialog: ({
     children,
     onOK,
     onCancel,

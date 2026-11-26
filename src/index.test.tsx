@@ -78,7 +78,7 @@ describe('plugin entrypoint', () => {
     expect(setItemSpy).toHaveBeenCalledWith(
       PORTAL_STORAGE_KEY,
       JSON.stringify({
-        viewMode: ViewMode.Sidebar,
+        viewMode: ViewMode.Closed,
         position: 3,
         margin: 45,
         size: 1.3,
@@ -103,8 +103,24 @@ describe('plugin entrypoint', () => {
     });
   });
 
+  it('ignores an enabled switch saved by .26', async () => {
+    localStorage.setItem(
+      PORTAL_STORAGE_KEY,
+      JSON.stringify({
+        viewMode: ViewMode.Sidebar,
+        url: 'https://example.com/old-guide',
+        rightStickFullscreen: true,
+      }),
+    );
+    expect((await loadState()).get()).toMatchObject({
+      viewMode: ViewMode.Closed,
+      url: 'https://example.com/old-guide',
+      rightStickFullscreen: true,
+    });
+  });
+
   it.each([ViewMode.Closed, ViewMode.Sidebar])(
-    'restores the saved switch %s after reinitialization without restoring temporary panels',
+    'starts closed after a session with switch %s, preserving preferences without temporary panels',
     async (viewMode) => {
       const state = await loadState();
       state.set({
@@ -120,7 +136,7 @@ describe('plugin entrypoint', () => {
       vi.resetModules();
       const restored = (await loadState()).get();
       expect(restored).toMatchObject({
-        viewMode,
+        viewMode: ViewMode.Closed,
         url: 'https://example.com/guide',
         sidebarVideoSpace: true,
         rightStickFullscreen: true,

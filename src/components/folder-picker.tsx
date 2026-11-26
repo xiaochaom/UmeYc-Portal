@@ -2,13 +2,16 @@ import { DialogButton, Focusable } from '@decky/ui';
 import { useEffect, useState } from 'react';
 import { listLocalFiles, LocalListing } from '../lib/local-files';
 import { PanelDialog } from './panel-dialog';
+import { NativeDialog } from './native-dialog';
 
 export const FolderPicker = ({
   initial,
+  native = false,
   onChoose,
   onCancel,
 }: {
   initial: string;
+  native?: boolean;
   onChoose(path: string): void;
   onCancel(): void;
 }) => {
@@ -44,8 +47,9 @@ export const FolderPicker = ({
       active = false;
     };
   }, [directory]);
+  const Dialog = native ? NativeDialog : PanelDialog;
   return (
-    <PanelDialog
+    <Dialog
       strTitle="选择文件夹"
       strOKButtonText="使用此文件夹"
       bOKDisabled={!listing || loading}
@@ -63,7 +67,16 @@ export const FolderPicker = ({
       <p style={{ overflowWrap: 'anywhere', fontSize: 12, opacity: 0.7 }}>
         {listing?.directory || directory}
       </p>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <Focusable
+        flow-children="column"
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 8,
+          maxHeight: native ? '38vh' : undefined,
+          overflowY: 'auto',
+        }}
+      >
         {listing && listing.parent !== listing.directory && (
           <DialogButton disabled={loading} onClick={() => navigate(listing.parent)}>
             上一级
@@ -85,7 +98,7 @@ export const FolderPicker = ({
             ))
         )}
         {error && <p role="alert">{error}</p>}
-      </div>
-    </PanelDialog>
+      </Focusable>
+    </Dialog>
   );
 };

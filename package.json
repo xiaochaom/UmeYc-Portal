@@ -1,6 +1,6 @@
 {
   "name": "decky-portal",
-  "version": "1.0.0-zh-cn.26",
+  "version": "1.0.0-zh-cn.27",
   "description": "UmeYc-Portal：简体中文界面，支持在游戏模式选择本地攻略文件和预览长图。",
   "type": "module",
   "scripts": {
