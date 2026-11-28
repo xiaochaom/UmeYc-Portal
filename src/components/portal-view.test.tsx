@@ -39,6 +39,7 @@ const getGamepadNavigationTrees = vi.fn();
 const createBrowserView = vi.fn();
 const setVisible = vi.fn();
 const setBounds = vi.fn();
+const setStackingOrder = vi.fn();
 const loadURL = vi.fn();
 const destroy = vi.fn();
 const useUIComposition = vi.fn();
@@ -90,6 +91,7 @@ describe('PortalView and PortalViewOuter', () => {
       GetBrowser: () => ({
         SetVisible: setVisible,
         SetBounds: setBounds,
+        SetWindowStackingOrder: setStackingOrder,
       }),
       LoadURL: loadURL,
       Destroy: destroy,
@@ -156,7 +158,8 @@ describe('PortalView and PortalViewOuter', () => {
         expect(setWebMediaMock).not.toHaveBeenCalled();
         refresh();
         rerender(<PortalView />);
-        expect(popupRoot.style.visibility).toBe('hidden');
+        expect(popupRoot.style.visibility).toBe('');
+        expect(setStackingOrder).toHaveBeenLastCalledWith(1);
         await act(async () => {
           vi.advanceTimersByTime(100);
         });
@@ -187,6 +190,7 @@ describe('PortalView and PortalViewOuter', () => {
         expect(queryByTestId('reader-input')).toBeNull();
         await act(async () => finish());
         expect(setVisible).toHaveBeenLastCalledWith(false);
+        expect(setStackingOrder).toHaveBeenLastCalledWith(0);
         expect(setBounds).toHaveBeenLastCalledWith(0, 0, 854, 534);
 
         vi.mocked(getOpenSideMenu).mockReturnValue(2);
@@ -194,6 +198,7 @@ describe('PortalView and PortalViewOuter', () => {
           vi.advanceTimersByTime(100);
         });
         expect(setVisible).toHaveBeenLastCalledWith(true);
+        expect(setStackingOrder).toHaveBeenLastCalledWith(1);
         await act(async () => {
           vi.advanceTimersByTime(200);
         });
@@ -204,6 +209,7 @@ describe('PortalView and PortalViewOuter', () => {
         refresh();
         rerender(<PortalView />);
         expect(popupRoot.style.visibility).toBe('');
+        expect(setStackingOrder).toHaveBeenLastCalledWith(0);
         vi.mocked(getOpenSideMenu).mockReturnValue(2);
         await act(async () => {
           vi.advanceTimersByTime(100);
@@ -214,6 +220,7 @@ describe('PortalView and PortalViewOuter', () => {
         expect(loadURL).toHaveBeenCalledTimes(1);
         expect(destroy).not.toHaveBeenCalled();
         unmount();
+        expect(setStackingOrder).toHaveBeenLastCalledWith(0);
       } finally {
         vi.useRealTimers();
       }
@@ -251,17 +258,19 @@ describe('PortalView and PortalViewOuter', () => {
     vi.useFakeTimers();
     try {
       vi.mocked(useGlobalState).mockReturnValue([
-        { ...createState(ViewMode.Sidebar), sidebarVideoSpace: true },
+        { ...createState(ViewMode.Sidebar), sidebarVideoSpace: true, readerFullscreen: true },
       ] as never);
       const { queryByTestId, unmount } = render(<PortalView />);
       expect(setVisible).toHaveBeenLastCalledWith(true);
       expect(queryByTestId('reader-input')).toBeTruthy();
+      expect(setStackingOrder).toHaveBeenLastCalledWith(1);
       vi.mocked(isSteamBlockingUI).mockReturnValue(true);
       await act(async () => {
         vi.advanceTimersByTime(100);
       });
       expect(setVisible).toHaveBeenLastCalledWith(false);
       expect(useUIComposition).toHaveBeenCalledTimes(1);
+      expect(setStackingOrder).toHaveBeenLastCalledWith(0);
       expect(queryByTestId('reader-input')).toBeNull();
       expect(destroy).not.toHaveBeenCalled();
       expect(sendWebSpaceMock).not.toHaveBeenCalled();
@@ -777,7 +786,11 @@ describe('PortalView and PortalViewOuter', () => {
       rememberUrl(localStorage, short);
       getWebPageStateMock.mockImplementation(async () => ({ url: actualUrl, title }));
       createBrowserView.mockReturnValue({
-        GetBrowser: () => ({ SetVisible: setVisible, SetBounds: setBounds }),
+        GetBrowser: () => ({
+          SetVisible: setVisible,
+          SetBounds: setBounds,
+          SetWindowStackingOrder: setStackingOrder,
+        }),
         LoadURL: loadURL,
         Destroy: destroy,
         URL: first, // Steam keeps this old value after a client-side episode switch.

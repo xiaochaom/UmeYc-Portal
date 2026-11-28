@@ -33,8 +33,8 @@ describe('right stick reader input', () => {
       bLeftBumper: false,
       bRightBumper: false,
       bLeftStickClick: false,
-      bLeftTrigger: false,
       bRightTrigger: false,
+      bLeftTrigger: false,
     });
   });
   afterEach(() => {
@@ -49,15 +49,15 @@ describe('right stick reader input', () => {
     expect(stickVelocity(0.59)).toBeCloseTo(0.5);
   });
 
-  it('toggles on each R2 press, requiring release and ignoring holds', () => {
+  it('toggles on each L2 press, requiring release and ignoring holds', () => {
     const change = vi.fn();
-    useButtonsMock.mockReturnValue({ bRightTrigger: true });
+    useButtonsMock.mockReturnValue({ bLeftTrigger: true });
     const { rerender, unmount } = render(<ReaderInput onFullscreenToggle={change} />);
     expect(change).not.toHaveBeenCalled();
     for (let press = 0; press < 2; press++) {
-      useButtonsMock.mockReturnValue({ bRightTrigger: false, bLeftTrigger: false });
+      useButtonsMock.mockReturnValue({ bLeftTrigger: false, bRightTrigger: false });
       rerender(<ReaderInput onFullscreenToggle={change} />);
-      useButtonsMock.mockReturnValue({ bRightTrigger: true });
+      useButtonsMock.mockReturnValue({ bLeftTrigger: true });
       rerender(<ReaderInput onFullscreenToggle={change} />);
       expect(change).toHaveBeenCalledTimes(press + 1);
       rerender(<ReaderInput onFullscreenToggle={change} />);
@@ -66,7 +66,7 @@ describe('right stick reader input', () => {
     unmount();
   });
 
-  it('sends one Space per L2 press to the current page, leaving window size and video fullscreen alone', async () => {
+  it('sends one Space per R2 press to the current page, leaving window size and video fullscreen alone', async () => {
     const change = vi.fn();
     const page = {
       URL: 'https://video.example/episode1',
@@ -74,13 +74,13 @@ describe('right stick reader input', () => {
       GetBrowser: () => ({ GetBounds: () => ({ width: 854, height: 534 }) }),
     };
     Object.assign(window, { portal: page });
-    useButtonsMock.mockReturnValue({ bLeftTrigger: true });
+    useButtonsMock.mockReturnValue({ bRightTrigger: true });
     const { rerender, unmount } = render(<ReaderInput onFullscreenToggle={change} />);
     expect(sendWebSpaceMock).not.toHaveBeenCalled();
     for (let press = 0; press < 2; press++) {
-      useButtonsMock.mockReturnValue({ bLeftTrigger: false });
+      useButtonsMock.mockReturnValue({ bRightTrigger: false });
       rerender(<ReaderInput onFullscreenToggle={change} />);
-      useButtonsMock.mockReturnValue({ bLeftTrigger: true });
+      useButtonsMock.mockReturnValue({ bRightTrigger: true });
       await act(async () => rerender(<ReaderInput onFullscreenToggle={change} />));
       expect(sendWebSpaceMock).toHaveBeenCalledTimes(press + 1);
       expect(sendWebSpaceMock).toHaveBeenLastCalledWith(page.URL, page.Title);
@@ -89,9 +89,9 @@ describe('right stick reader input', () => {
       page.URL = 'https://video.example/episode2';
       page.Title = '第二集';
     }
-    useButtonsMock.mockReturnValue({ bLeftTrigger: false });
+    useButtonsMock.mockReturnValue({ bRightTrigger: false });
     rerender(<ReaderInput path="/tmp/guide.JPG" onFullscreenToggle={change} />);
-    useButtonsMock.mockReturnValue({ bLeftTrigger: true });
+    useButtonsMock.mockReturnValue({ bRightTrigger: true });
     await act(async () =>
       rerender(<ReaderInput path="/tmp/guide.JPG" onFullscreenToggle={change} />),
     );

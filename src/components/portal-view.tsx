@@ -1,5 +1,5 @@
 import { Router, WindowRouter, getGamepadNavigationTrees, quickAccessMenuClasses } from '@decky/ui';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { callable, toaster } from '@decky/api';
 
 import { useGlobalState } from '../hooks/global-state';
@@ -32,6 +32,7 @@ interface BrowserProps {
 interface BrowserHandle {
   SetVisible(visible: boolean): void;
   SetBounds(x: number, y: number, width: number, height: number): void;
+  SetWindowStackingOrder(order: number): void;
 }
 
 interface BrowserViewHandle {
@@ -64,7 +65,6 @@ interface NavTree {
 
 interface DeckWindow {
   document: {
-    documentElement?: { style: typeof document.documentElement.style };
     hidden: boolean;
     querySelector?: (selector: string) => {
       getBoundingClientRect(): { width: number };
@@ -131,6 +131,14 @@ const Browser = ({
 
   const observedUrl = useRef<string | null>(null);
   const pendingNavigation = useRef<string | null>(url);
+
+  useLayoutEffect(() => {
+    if (!handles) return;
+    // Steam uses 1 for foreground BrowserViews. CSS hiding QAM alone leaves
+    // its native popup intercepting touch on the right side of the screen.
+    handles.browser.SetWindowStackingOrder(fullscreen && visible ? 1 : 0);
+    return () => handles.browser.SetWindowStackingOrder(0);
+  }, [handles, fullscreen, visible]);
 
   const previousPlayback = useRef({ url, sidebarOpen, playbackSpace });
   useEffect(() => {
@@ -464,24 +472,6 @@ export const PortalView = () => {
     if (enabled === !!readerFullscreen) return;
     setGlobalState((state) => ({ ...state, readerFullscreen: enabled }));
   };
-  useEffect(() => {
-    if (!readerFullscreen || !qamOpen || activePanel || steamBlockingUI) return;
-    const qamWindow = getOwnerWindow(
-      (getGamepadNavigationTrees() ?? []) as NavTree[],
-      'QuickAccess-NA',
-    );
-    const style = qamWindow?.document.documentElement?.style;
-    if (!style) return;
-    const previous = style.getPropertyValue('visibility');
-    const priority = style.getPropertyPriority('visibility');
-    // Keep Steam's menu state and physical ... button unchanged. Only conceal
-    // its separate transparent popup while the reader occupies the full screen.
-    style.setProperty('visibility', 'hidden', 'important');
-    return () => {
-      if (previous) style.setProperty('visibility', previous, priority);
-      else style.removeProperty('visibility');
-    };
-  }, [readerFullscreen, qamOpen, activePanel, steamBlockingUI]);
   const closePanel = () =>
     setGlobalState((state) => ({ ...state, activePanel: undefined, visible: true }));
   const nativePanel =

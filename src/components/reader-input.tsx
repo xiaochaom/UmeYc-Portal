@@ -52,8 +52,8 @@ const ReaderButtons = ({
   const larger = buttons?.bRightBumper;
   const reset = buttons?.bLeftStickClick;
   const full = buttons?.bRightStickClick;
-  const toggle = buttons?.bRightTrigger;
-  const playback = buttons?.bLeftTrigger;
+  const toggle = buttons?.bLeftTrigger;
+  const playback = buttons?.bRightTrigger;
   useEffect(() => {
     const states = [smaller, larger, reset, full, toggle, playback];
     const edges = states.map((pressed, index) => {
