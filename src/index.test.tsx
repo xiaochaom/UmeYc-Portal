@@ -130,7 +130,13 @@ describe('plugin entrypoint', () => {
         sidebarVideoSpace: true,
         rightStickFullscreen: true,
       });
-      state.set({ ...state.get(), viewMode, visible: false, activePanel: 'url' });
+      state.set({
+        ...state.get(),
+        viewMode,
+        visible: false,
+        activePanel: 'url',
+        readerFullscreen: true,
+      });
       const plugin = (await import('./index')).default as unknown as { onDismount: () => void };
       plugin.onDismount();
       vi.resetModules();
@@ -141,6 +147,7 @@ describe('plugin entrypoint', () => {
         sidebarVideoSpace: true,
         rightStickFullscreen: true,
         visible: true,
+        readerFullscreen: false,
       });
       expect(restored.activePanel).toBeUndefined();
     },

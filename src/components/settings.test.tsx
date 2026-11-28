@@ -133,18 +133,21 @@ describe('Settings', () => {
     expect(screen.queryByLabelText('按下右摇杆切换视频全屏')).toBeNull();
   });
 
-  it('opens the local file manager', () => {
+  it.each([
+    ['本地文件', 'files'],
+    ['使用说明', 'help'],
+  ])('opens %s', (label, panel) => {
     vi.mocked(useGlobalState).mockReturnValue([
       createState(ViewMode.Sidebar),
       vi.fn(),
       {},
     ] as never);
     render(<Settings />);
-    fireEvent.click(screen.getByText('本地文件'));
+    fireEvent.click(screen.getByText(label));
     const setter = vi.mocked(vi.mocked(useGlobalState).mock.results.slice(-1)[0].value[1]);
     expect(setter).toHaveBeenLastCalledWith(expect.any(Function));
     const update = setter.mock.calls.slice(-1)[0][0];
-    expect(update(createState(ViewMode.Sidebar)).activePanel).toBe('files');
+    expect(update(createState(ViewMode.Sidebar)).activePanel).toBe(panel);
   });
 
   it('can reopen a closed reader in sidebar mode', () => {

@@ -22,6 +22,24 @@ export const Settings = () => {
       <PanelSection>
         <PanelSectionRow>
           <ButtonItem
+            bottomSeparator="standard"
+            layout="below"
+            disabled={!url}
+            onClick={() =>
+              setGlobalState((state) => ({
+                ...state,
+                activePanel: undefined,
+                readerFullscreen: false,
+                visible: true,
+                viewMode: state.viewMode === ViewMode.Closed ? ViewMode.Sidebar : ViewMode.Closed,
+              }))
+            }
+          >
+            {viewMode === ViewMode.Closed ? '打开' : '关闭'}
+          </ButtonItem>
+        </PanelSectionRow>
+        <PanelSectionRow>
+          <ButtonItem
             layout="below"
             onClick={() => setGlobalState((state) => ({ ...state, activePanel: 'files' }))}
           >
@@ -76,9 +94,13 @@ export const Settings = () => {
           </ButtonItem>
         </PanelSectionRow>
         <PanelSectionRow>
-          <div style={{ fontSize: 12, opacity: 0.7 }}>
-            按「…」显示或隐藏攻略；右摇杆滚动，自动记住本次阅读位置。
-          </div>
+          <ButtonItem
+            layout="below"
+            bottomSeparator="standard"
+            onClick={() => setGlobalState((state) => ({ ...state, activePanel: 'help' }))}
+          >
+            使用说明
+          </ButtonItem>
         </PanelSectionRow>
         {/^https?:\/\//i.test(url) && (
           <>
@@ -104,23 +126,6 @@ export const Settings = () => {
             </PanelSectionRow>
           </>
         )}
-        <PanelSectionRow>
-          <ButtonItem
-            bottomSeparator="none"
-            layout="below"
-            disabled={!url}
-            onClick={() =>
-              setGlobalState((state) => ({
-                ...state,
-                activePanel: undefined,
-                visible: true,
-                viewMode: state.viewMode === ViewMode.Closed ? ViewMode.Sidebar : ViewMode.Closed,
-              }))
-            }
-          >
-            {viewMode === ViewMode.Closed ? '打开' : '关闭'}
-          </ButtonItem>
-        </PanelSectionRow>
       </PanelSection>
     </>
   );

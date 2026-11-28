@@ -15,7 +15,8 @@ export interface State {
   controlBar: boolean;
   sidebarVideoSpace?: boolean;
   rightStickFullscreen?: boolean;
-  activePanel?: 'url' | 'phone' | 'files';
+  readerFullscreen?: boolean;
+  activePanel?: 'url' | 'phone' | 'files' | 'help';
   pageTitle?: string;
   pageTitleUrl?: string;
 }

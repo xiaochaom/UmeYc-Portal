@@ -26,6 +26,7 @@ interface BrowserProps {
   playbackSpace?: boolean;
   suppressPlayback?: boolean;
   pageTitle?: string;
+  fullscreen?: boolean;
 }
 
 interface BrowserHandle {
@@ -63,6 +64,7 @@ interface NavTree {
 
 interface DeckWindow {
   document: {
+    documentElement?: { style: typeof document.documentElement.style };
     hidden: boolean;
     querySelector?: (selector: string) => {
       getBoundingClientRect(): { width: number };
@@ -79,6 +81,9 @@ interface DeckWindow {
 }
 
 const sendWebSpace = callable<[url: string, title: string], void>('send_web_space');
+const setWebMedia = callable<[url: string, action: 'pause' | 'resume', title: string], void>(
+  'set_web_media',
+);
 const getWebPageState = callable<[url: string, title: string], { url: string; title: string }>(
   'get_web_page_state',
 );
@@ -100,6 +105,7 @@ const Browser = ({
   playbackSpace,
   suppressPlayback,
   pageTitle,
+  fullscreen,
 }: BrowserProps) => {
   const [, , stateContext] = useGlobalState();
   const web = /^https?:\/\//i.test(url);
@@ -135,8 +141,8 @@ const Browser = ({
     const previous = previousPlayback.current;
     if (!handles) return;
     const toggle =
-      playbackSpace &&
-      previous.playbackSpace &&
+      web &&
+      (fullscreen || (playbackSpace && previous.playbackSpace)) &&
       previous.url === url &&
       previous.sidebarOpen !== sidebarOpen;
     if (!toggle) {
@@ -152,9 +158,17 @@ const Browser = ({
     // that short transition so a dropdown can suppress the pending key.
     const timer = setTimeout(() => {
       previousPlayback.current = { url, sidebarOpen, playbackSpace };
-      void sendWebSpace(handles.view.URL || url, handles.view.Title || '')
+      void (
+        fullscreen
+          ? setWebMedia(
+              handles.view.URL || url,
+              sidebarOpen ? 'resume' : 'pause',
+              handles.view.Title || '',
+            )
+          : sendWebSpace(handles.view.URL || url, handles.view.Title || '')
+      )
         .catch((error: unknown) =>
-          toaster.toast({ title: '网页空格快捷键发送失败', body: String(error) }),
+          toaster.toast({ title: '网页播放控制失败', body: String(error) }),
         )
         .finally(() => {
           if (!cancelled && !sidebarOpen) handles.browser.SetVisible(visible);
@@ -164,7 +178,7 @@ const Browser = ({
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [handles, visible, url, sidebarOpen, playbackSpace, suppressPlayback]);
+  }, [handles, visible, url, sidebarOpen, playbackSpace, suppressPlayback, fullscreen, web]);
 
   useEffect(() => {
     if (!handles) return;
@@ -256,11 +270,11 @@ const Browser = ({
     if (preserveHiddenBounds && !visible) return;
     handles?.browser.SetBounds(
       x,
-      y + (web ? WEB_HEADER_HEIGHT : 0),
+      y + (web && !fullscreen ? WEB_HEADER_HEIGHT : 0),
       width,
-      Math.max(1, height - (web ? WEB_HEADER_HEIGHT : 0)),
+      Math.max(1, height - (web && !fullscreen ? WEB_HEADER_HEIGHT : 0)),
     );
-  }, [handles, x, y, width, height, preserveHiddenBounds, visible, web]);
+  }, [handles, x, y, width, height, preserveHiddenBounds, visible, web, fullscreen]);
 
   useEffect(() => {
     return () => handles?.view.Destroy();
@@ -271,7 +285,7 @@ const Browser = ({
   return (
     <>
       {visible && <BrowserComposition />}
-      {web && visible && handles && (
+      {web && !fullscreen && visible && handles && (
         <WebHeader
           title={pageTitle || ''}
           getUrl={() => handles.view.URL || url}
@@ -431,14 +445,49 @@ export const PortalView = () => {
     pageTitle: nativeTitle,
   } = useDeckComponentBounds();
   const [
-    { url, visible, sidebarVideoSpace, rightStickFullscreen, activePanel, pageTitle, pageTitleUrl },
+    {
+      url,
+      visible,
+      sidebarVideoSpace,
+      rightStickFullscreen,
+      readerFullscreen,
+      activePanel,
+      pageTitle,
+      pageTitleUrl,
+    },
     setGlobalState,
   ] = useGlobalState();
+  const presentationOpen = qamOpen;
   const readerVisible =
-    !!url && visible && !activePanel && !dropdownOpen && !steamBlockingUI && qamOpen;
+    !!url && visible && !activePanel && !dropdownOpen && !steamBlockingUI && presentationOpen;
+  const changeFullscreen = (enabled: boolean) => {
+    if (enabled === !!readerFullscreen) return;
+    setGlobalState((state) => ({ ...state, readerFullscreen: enabled }));
+  };
+  useEffect(() => {
+    if (!readerFullscreen || !qamOpen || activePanel || steamBlockingUI) return;
+    const qamWindow = getOwnerWindow(
+      (getGamepadNavigationTrees() ?? []) as NavTree[],
+      'QuickAccess-NA',
+    );
+    const style = qamWindow?.document.documentElement?.style;
+    if (!style) return;
+    const previous = style.getPropertyValue('visibility');
+    const priority = style.getPropertyPriority('visibility');
+    // Keep Steam's menu state and physical ... button unchanged. Only conceal
+    // its separate transparent popup while the reader occupies the full screen.
+    style.setProperty('visibility', 'hidden', 'important');
+    return () => {
+      if (previous) style.setProperty('visibility', previous, priority);
+      else style.removeProperty('visibility');
+    };
+  }, [readerFullscreen, qamOpen, activePanel, steamBlockingUI]);
   const closePanel = () =>
     setGlobalState((state) => ({ ...state, activePanel: undefined, visible: true }));
-  const nativePanel = activePanel === 'url' || activePanel === 'files' ? activePanel : undefined;
+  const nativePanel =
+    activePanel === 'url' || activePanel === 'files' || activePanel === 'help'
+      ? activePanel
+      : undefined;
   const localPath = (() => {
     try {
       return localPathFromUrl(url);
@@ -456,7 +505,7 @@ export const PortalView = () => {
     },
   ];
 
-  if (nav) {
+  if (nav && !readerFullscreen) {
     availableBounds.push({
       x: nav.width,
       y: 0,
@@ -465,7 +514,7 @@ export const PortalView = () => {
     });
   }
 
-  if (qam) {
+  if (qam && !readerFullscreen) {
     availableBounds.push({
       x: 0,
       y: 0,
@@ -474,7 +523,7 @@ export const PortalView = () => {
     });
   }
 
-  if (virtualKeyboard) {
+  if (virtualKeyboard && !readerFullscreen) {
     availableBounds.push({
       x: 0,
       y: 0,
@@ -501,7 +550,8 @@ export const PortalView = () => {
           width={bounds.width}
           height={bounds.height}
           preserveHiddenBounds
-          sidebarOpen={qamOpen}
+          sidebarOpen={presentationOpen}
+          fullscreen={readerFullscreen === true}
           playbackSpace={sidebarVideoSpace === true && /^https?:\/\//i.test(url)}
           suppressPlayback={dropdownOpen || !!activePanel || steamBlockingUI}
           pageTitle={pageTitleUrl === url ? pageTitle || nativeTitle : nativeTitle}
@@ -512,6 +562,7 @@ export const PortalView = () => {
           key={url}
           path={localPath ?? undefined}
           fullscreen={rightStickFullscreen === true && /^https?:\/\//i.test(url)}
+          onFullscreenToggle={() => changeFullscreen(!readerFullscreen)}
         />
       )}
       {nativePanel && <NativePanel panel={nativePanel} />}

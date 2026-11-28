@@ -323,6 +323,9 @@ class Plugin:
     async def toggle_web_fullscreen(self, url: str, title: str = ""):
         await self._web_scroller.fullscreen(url, title)
 
+    async def set_web_media(self, url: str, action: str, title: str = ""):
+        await self._web_scroller.media(url, action, title)
+
     async def zoom_reader(self, path: str, action: str):
         if action not in ("smaller", "default", "larger"):
             raise ValueError("Invalid zoom action")

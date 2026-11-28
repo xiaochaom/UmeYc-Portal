@@ -26,6 +26,7 @@ export const releaseWebScrollMock = vi.fn(async () => undefined);
 export const zoomWebPageMock = vi.fn(async () => ({ factor: 1 }));
 export const sendWebSpaceMock = vi.fn(async (): Promise<void> => undefined);
 export const toggleWebFullscreenMock = vi.fn(async (): Promise<void> => undefined);
+export const setWebMediaMock = vi.fn(async (): Promise<void> => undefined);
 export const getWebPageStateMock = vi.fn();
 export const startUrlInputMock = vi.fn();
 export const getUrlInputStatusMock = vi.fn();
@@ -39,6 +40,7 @@ export const callable = vi.fn((route: string) => {
     zoom_web_page: zoomWebPageMock,
     send_web_space: sendWebSpaceMock,
     toggle_web_fullscreen: toggleWebFullscreenMock,
+    set_web_media: setWebMediaMock,
     get_web_page_state: getWebPageStateMock,
     prepare_local_file: prepareLocalFileMock,
     list_local_files: listLocalFilesMock,

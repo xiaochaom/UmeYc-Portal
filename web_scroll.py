@@ -150,6 +150,22 @@ class WebScroller:
         key = {"key": "f", "code": "KeyF", "windowsVirtualKeyCode": 70, "nativeVirtualKeyCode": 70}
         await self._run(self._key(url, key, title))
 
+    async def media(self, url, action, title=""):
+        self._validate_url(url)
+        if action not in {"pause", "resume"}:
+            raise ValueError("Invalid media action")
+        await self._run(self._media(url, action, title))
+
+    async def _media(self, url, action, title):
+        await self._ensure_page(url, title)
+        expression = Path(__file__).with_name("assets").joinpath("web-media.js").read_text().replace(
+            "__PORTAL_MEDIA_ACTION__", json.dumps(action)
+        )
+        result = await self._request("Runtime.evaluate", {"expression": expression,
+            "returnByValue": True, "awaitPromise": True, "userGesture": True})
+        if "exceptionDetails" in result:
+            raise RuntimeError("无法控制当前网页的视频")
+
     async def _run(self, operation):
         async with self._lock:
             try:

@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   releaseWebScrollMock,
   scrollWebPageMock,
+  sendWebSpaceMock,
   setReaderMotionMock,
   toggleWebFullscreenMock,
   zoomReaderMock,
@@ -32,6 +33,8 @@ describe('right stick reader input', () => {
       bLeftBumper: false,
       bRightBumper: false,
       bLeftStickClick: false,
+      bLeftTrigger: false,
+      bRightTrigger: false,
     });
   });
   afterEach(() => {
@@ -44,6 +47,58 @@ describe('right stick reader input', () => {
     expect(stickVelocity(1)).toBe(1);
     expect(stickVelocity(-2)).toBe(-1);
     expect(stickVelocity(0.59)).toBeCloseTo(0.5);
+  });
+
+  it('toggles on each R2 press, requiring release and ignoring holds', () => {
+    const change = vi.fn();
+    useButtonsMock.mockReturnValue({ bRightTrigger: true });
+    const { rerender, unmount } = render(<ReaderInput onFullscreenToggle={change} />);
+    expect(change).not.toHaveBeenCalled();
+    for (let press = 0; press < 2; press++) {
+      useButtonsMock.mockReturnValue({ bRightTrigger: false, bLeftTrigger: false });
+      rerender(<ReaderInput onFullscreenToggle={change} />);
+      useButtonsMock.mockReturnValue({ bRightTrigger: true });
+      rerender(<ReaderInput onFullscreenToggle={change} />);
+      expect(change).toHaveBeenCalledTimes(press + 1);
+      rerender(<ReaderInput onFullscreenToggle={change} />);
+    }
+    expect(change).toHaveBeenCalledTimes(2);
+    unmount();
+  });
+
+  it('sends one Space per L2 press to the current page, leaving window size and video fullscreen alone', async () => {
+    const change = vi.fn();
+    const page = {
+      URL: 'https://video.example/episode1',
+      Title: '第一集',
+      GetBrowser: () => ({ GetBounds: () => ({ width: 854, height: 534 }) }),
+    };
+    Object.assign(window, { portal: page });
+    useButtonsMock.mockReturnValue({ bLeftTrigger: true });
+    const { rerender, unmount } = render(<ReaderInput onFullscreenToggle={change} />);
+    expect(sendWebSpaceMock).not.toHaveBeenCalled();
+    for (let press = 0; press < 2; press++) {
+      useButtonsMock.mockReturnValue({ bLeftTrigger: false });
+      rerender(<ReaderInput onFullscreenToggle={change} />);
+      useButtonsMock.mockReturnValue({ bLeftTrigger: true });
+      await act(async () => rerender(<ReaderInput onFullscreenToggle={change} />));
+      expect(sendWebSpaceMock).toHaveBeenCalledTimes(press + 1);
+      expect(sendWebSpaceMock).toHaveBeenLastCalledWith(page.URL, page.Title);
+      rerender(<ReaderInput onFullscreenToggle={change} />);
+      expect(sendWebSpaceMock).toHaveBeenCalledTimes(press + 1);
+      page.URL = 'https://video.example/episode2';
+      page.Title = '第二集';
+    }
+    useButtonsMock.mockReturnValue({ bLeftTrigger: false });
+    rerender(<ReaderInput path="/tmp/guide.JPG" onFullscreenToggle={change} />);
+    useButtonsMock.mockReturnValue({ bLeftTrigger: true });
+    await act(async () =>
+      rerender(<ReaderInput path="/tmp/guide.JPG" onFullscreenToggle={change} />),
+    );
+    expect(sendWebSpaceMock).toHaveBeenCalledTimes(2);
+    expect(change).not.toHaveBeenCalled();
+    expect(toggleWebFullscreenMock).not.toHaveBeenCalled();
+    unmount();
   });
 
   it('sends downward motion, stops on release and unregisters polling when hidden', async () => {

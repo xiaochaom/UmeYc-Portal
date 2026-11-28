@@ -111,6 +111,31 @@ class WebScrollTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(all(c["params"]["key"] == "f" and c["params"]["code"] == "KeyF"
                             and c["params"]["windowsVirtualKeyCode"] == 70 for c in calls))
 
+    async def test_media_actions_use_matching_page_and_report_script_errors(self):
+        self.socket.receive_json.side_effect = [{"id": i, "result": {}} for i in range(1, 3)]
+        for action in ["pause", "resume"]:
+            await self.scroller.media("https://video.example/", action, "视频")
+            request = self.socket.send_json.call_args.args[0]
+            self.assertEqual(request["method"], "Runtime.evaluate")
+            self.assertIn('const action = "' + action + '"', request["params"]["expression"])
+            self.assertTrue(request["params"]["userGesture"])
+            self.assertTrue(request["params"]["awaitPromise"])
+        self.connection.assert_awaited_once_with("https://video.example/", "视频")
+        self.socket.receive_json.side_effect = [{"id": 3, "result": {"exceptionDetails": {}}}]
+        with self.assertRaises(RuntimeError):
+            await self.scroller.media("https://video.example/", "pause", "视频")
+        self.assertIsNone(self.scroller._socket)
+
+    async def test_invalid_media_action_and_non_web_target_are_rejected(self):
+        for url, action in [("https://video.example/", "bad action"),
+                            ("https://video.example/", "enter"),
+                            ("https://video.example/", "exit"),
+                            ("file:///tmp/guide.JPG", "enter"),
+                            ("https://steamloopback.host/", "pause")]:
+            with self.assertRaises(ValueError):
+                await self.scroller.media(url, action)
+        self.connection.assert_not_called()
+
     async def test_fullscreen_releases_key_on_error_and_rejects_non_web_targets(self):
         self.socket.receive_json.side_effect = [{"id": 1, "error": {}}, {"id": 2}]
         with self.assertRaises(RuntimeError):

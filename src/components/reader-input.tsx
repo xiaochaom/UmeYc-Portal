@@ -18,6 +18,8 @@ interface ButtonState {
   bRightBumper?: boolean;
   bLeftStickClick?: boolean;
   bRightStickClick?: boolean;
+  bRightTrigger?: boolean;
+  bLeftTrigger?: boolean;
 }
 const useButtonFeed: ((index: number) => ButtonState | undefined) | undefined = findModuleExport(
   (value: unknown) =>
@@ -25,6 +27,7 @@ const useButtonFeed: ((index: number) => ButtonState | undefined) | undefined = 
 );
 
 const fullscreenWeb = callable<[url: string, title: string], void>('toggle_web_fullscreen');
+const sendWebSpace = callable<[url: string, title: string], void>('send_web_space');
 const zoomWeb = callable<[url: string, action: ZoomAction, title: string], unknown>(
   'zoom_web_page',
 );
@@ -34,21 +37,25 @@ const ReaderButtons = ({
   controllerIndex,
   path,
   fullscreen,
+  onFullscreenToggle,
 }: {
   controllerIndex: number;
   path?: string;
   fullscreen: boolean;
+  onFullscreenToggle?: () => void;
 }) => {
   const buttons = useButtonFeed!(controllerIndex);
   // Keys held while opening/changing the reader must be released first.
-  const previous = useRef([true, true, true, true]);
+  const previous = useRef([true, true, true, true, true, true]);
   const inFlight = useRef(false);
   const smaller = buttons?.bLeftBumper;
   const larger = buttons?.bRightBumper;
   const reset = buttons?.bLeftStickClick;
   const full = buttons?.bRightStickClick;
+  const toggle = buttons?.bRightTrigger;
+  const playback = buttons?.bLeftTrigger;
   useEffect(() => {
-    const states = [smaller, larger, reset, full];
+    const states = [smaller, larger, reset, full, toggle, playback];
     const edges = states.map((pressed, index) => {
       if (pressed === undefined) return false;
       const trigger = pressed && !previous.current[index];
@@ -56,28 +63,45 @@ const ReaderButtons = ({
       return trigger;
     });
     const index = edges.findIndex(Boolean);
-    if (index < 0 || inFlight.current || (index === 3 && (path || !fullscreen))) return;
+    if (index === 4) {
+      onFullscreenToggle?.();
+      return;
+    }
+    if (
+      index < 0 ||
+      inFlight.current ||
+      (index === 3 && (path || !fullscreen)) ||
+      (index === 5 && path)
+    )
+      return;
     const page = path ? undefined : webPage();
     if (!path && !page) return;
     const action = (['smaller', 'larger', 'default'] as const)[index];
     inFlight.current = true;
     const command =
-      index === 3
-        ? fullscreenWeb(page!.url, page!.title)
-        : path
-          ? zoomReader(path, action)
-          : zoomWeb(page!.url, action, page!.title);
+      index === 5
+        ? sendWebSpace(page!.url, page!.title)
+        : index === 3
+          ? fullscreenWeb(page!.url, page!.title)
+          : path
+            ? zoomReader(path, action)
+            : zoomWeb(page!.url, action, page!.title);
     void command
       .catch((error: unknown) =>
         toaster.toast({
-          title: index === 3 ? '视频全屏快捷键发送失败' : '缩放快捷键执行失败',
+          title:
+            index === 5
+              ? '播放暂停快捷键发送失败'
+              : index === 3
+                ? '视频全屏快捷键发送失败'
+                : '缩放快捷键执行失败',
           body: String(error),
         }),
       )
       .finally(() => {
         inFlight.current = false;
       });
-  }, [smaller, larger, reset, full, path, fullscreen]);
+  }, [smaller, larger, reset, full, toggle, playback, path, fullscreen, onFullscreenToggle]);
   return null;
 };
 
@@ -159,9 +183,11 @@ const NativeReaderInput = ({
 export const ReaderInput = ({
   path,
   fullscreen = false,
+  onFullscreenToggle,
 }: {
   path?: string;
   fullscreen?: boolean;
+  onFullscreenToggle?: () => void;
 }) => {
   const [controllerIndex, setControllerIndex] = useState(getActiveControllerIndex);
   useEffect(() => {
@@ -179,6 +205,7 @@ export const ReaderInput = ({
           controllerIndex={controllerIndex}
           path={path}
           fullscreen={fullscreen}
+          onFullscreenToggle={onFullscreenToggle}
         />
       )}
     </>

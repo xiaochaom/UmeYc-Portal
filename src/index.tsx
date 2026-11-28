@@ -29,6 +29,7 @@ export default definePlugin(() => {
     ...getPersistedPortalState(localStorage),
     // Opening the reader is session-only, including when upgrading from .26.
     viewMode: ViewMode.Closed,
+    readerFullscreen: false,
   });
 
   let lastUrl: string | undefined;

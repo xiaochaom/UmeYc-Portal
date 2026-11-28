@@ -14,6 +14,7 @@ const { showModalMock, closeMock } = vi.hoisted(() => ({
 vi.mock('@decky/ui', () => ({ showModal: showModalMock }));
 vi.mock('./url-modal', () => ({ UrlModalWithState: () => null }));
 vi.mock('./local-files-modal', () => ({ LocalFilesModalWithState: () => null }));
+vi.mock('./help-modal', () => ({ HelpModal: () => null }));
 
 describe('native modal lifecycle', () => {
   beforeEach(() => {
@@ -26,7 +27,7 @@ describe('native modal lifecycle', () => {
     );
   });
 
-  it.each(['url', 'files'] as const)(
+  it.each(['url', 'files', 'help'] as const)(
     'opens %s with shared state and clears it on native dismiss',
     (panel) => {
       const state = new StateManager<State>({
@@ -40,7 +41,7 @@ describe('native modal lifecycle', () => {
         </GlobalContext.Provider>,
       );
       expect(showModalMock).toHaveBeenCalledTimes(1);
-      expect(showModalMock.mock.calls[0][0].props.value).toBe(state);
+      if (panel !== 'help') expect(showModalMock.mock.calls[0][0].props.value).toBe(state);
       expect(showModalMock.mock.calls[0][2].bNeverPopOut).toBe(true);
       rerender(
         <GlobalContext.Provider value={state}>

@@ -1,10 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { act, render, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, waitFor } from '@testing-library/react';
 import { Router } from '@decky/ui';
 import {
   prepareLocalFileMock,
   sendWebSpaceMock,
   getWebPageStateMock,
+  setWebMediaMock,
 } from '../__mocks__/decky-api';
 import { toLocalFileUrl } from '../lib/local-files';
 import { getOpenSideMenu, isSteamBlockingUI, isVirtualKeyboardShowing } from '../lib/menu-state';
@@ -14,7 +15,13 @@ vi.mock('../lib/menu-state', () => ({
   isVirtualKeyboardShowing: vi.fn(),
   isSteamBlockingUI: vi.fn(),
 }));
-vi.mock('./reader-input', () => ({ ReaderInput: () => <div data-testid="reader-input" /> }));
+vi.mock('./reader-input', () => ({
+  ReaderInput: ({ onFullscreenToggle }: { onFullscreenToggle: () => void }) => (
+    <div data-testid="reader-input">
+      <input aria-label="toggle fullscreen" type="button" onClick={onFullscreenToggle} />
+    </div>
+  ),
+}));
 vi.mock('./native-panel', () => ({
   NativePanel: ({ panel }: { panel: string }) => (
     <div data-testid="native-panel">{panel} modal</div>
@@ -117,6 +124,129 @@ describe('PortalView and PortalViewOuter', () => {
     },
   });
 
+  it.each([false, true])(
+    'keeps fullscreen synchronized with QAM, with sidebar space %s',
+    async (sidebarVideoSpace) => {
+      vi.useFakeTimers();
+      try {
+        let state = {
+          ...createState(ViewMode.Sidebar),
+          readerFullscreen: false,
+          sidebarVideoSpace,
+        };
+        const refresh = () =>
+          vi.mocked(useGlobalState).mockReturnValue([
+            state,
+            (update: (value: typeof state) => typeof state) => {
+              state = update(state);
+            },
+          ] as never);
+        refresh();
+        const tree = qamTree();
+        const popupRoot = document.createElement('div');
+        Object.assign(tree.m_Root.m_element.ownerDocument.defaultView.document, {
+          documentElement: popupRoot,
+        });
+        getGamepadNavigationTrees.mockReturnValue([tree]);
+        const { getByLabelText, queryByTestId, container, rerender, unmount } = render(
+          <PortalView />,
+        );
+        fireEvent.click(getByLabelText('toggle fullscreen'));
+        expect(getOpenSideMenu()).toBe(2);
+        expect(setWebMediaMock).not.toHaveBeenCalled();
+        refresh();
+        rerender(<PortalView />);
+        expect(popupRoot.style.visibility).toBe('hidden');
+        await act(async () => {
+          vi.advanceTimersByTime(100);
+        });
+        expect(setBounds).toHaveBeenLastCalledWith(0, 0, 854, 534);
+        expect(setVisible).toHaveBeenLastCalledWith(true);
+        expect(container.querySelector('button')).toBeNull();
+        await act(async () => {
+          vi.advanceTimersByTime(250);
+        });
+        expect(setWebMediaMock).not.toHaveBeenCalled();
+
+        let finish!: () => void;
+        setWebMediaMock.mockImplementationOnce(
+          () =>
+            new Promise<void>((resolve) => {
+              finish = resolve;
+            }),
+        );
+        vi.mocked(getOpenSideMenu).mockReturnValue(0);
+        await act(async () => {
+          vi.advanceTimersByTime(100);
+        });
+        await act(async () => {
+          vi.advanceTimersByTime(200);
+        });
+        expect(setWebMediaMock).toHaveBeenLastCalledWith('https://netflix.com', 'pause', '');
+        expect(setVisible).toHaveBeenLastCalledWith(true);
+        expect(queryByTestId('reader-input')).toBeNull();
+        await act(async () => finish());
+        expect(setVisible).toHaveBeenLastCalledWith(false);
+        expect(setBounds).toHaveBeenLastCalledWith(0, 0, 854, 534);
+
+        vi.mocked(getOpenSideMenu).mockReturnValue(2);
+        await act(async () => {
+          vi.advanceTimersByTime(100);
+        });
+        expect(setVisible).toHaveBeenLastCalledWith(true);
+        await act(async () => {
+          vi.advanceTimersByTime(200);
+        });
+        expect(setWebMediaMock).toHaveBeenLastCalledWith('https://netflix.com', 'resume', '');
+        fireEvent.click(getByLabelText('toggle fullscreen'));
+        expect(getOpenSideMenu()).toBe(2);
+        expect(setWebMediaMock).toHaveBeenCalledTimes(2);
+        refresh();
+        rerender(<PortalView />);
+        expect(popupRoot.style.visibility).toBe('');
+        vi.mocked(getOpenSideMenu).mockReturnValue(2);
+        await act(async () => {
+          vi.advanceTimersByTime(100);
+        });
+        expect(setBounds).toHaveBeenLastCalledWith(0, 34, 534, 500);
+        expect(setVisible).toHaveBeenLastCalledWith(true);
+        expect(sendWebSpaceMock).not.toHaveBeenCalled();
+        expect(loadURL).toHaveBeenCalledTimes(1);
+        expect(destroy).not.toHaveBeenCalled();
+        unmount();
+      } finally {
+        vi.useRealTimers();
+      }
+    },
+  );
+
+  it('fills the screen for a local guide without web media commands', async () => {
+    vi.useFakeTimers();
+    try {
+      vi.mocked(getOpenSideMenu).mockReturnValue(2);
+      vi.mocked(useGlobalState).mockReturnValue([
+        {
+          ...createState(ViewMode.Sidebar),
+          readerFullscreen: true,
+          url: toLocalFileUrl('/tmp/guide.JPG'),
+        },
+        vi.fn(),
+      ] as never);
+      prepareLocalFileMock.mockResolvedValue({ url: 'http://127.0.0.1:1234/viewer/token' });
+      const { unmount } = render(<PortalView />);
+      expect(setBounds).toHaveBeenLastCalledWith(0, 0, 854, 534);
+      vi.mocked(getOpenSideMenu).mockReturnValue(0);
+      await act(async () => {
+        vi.advanceTimersByTime(400);
+      });
+      expect(setVisible).toHaveBeenLastCalledWith(false);
+      expect(setWebMediaMock).not.toHaveBeenCalled();
+      unmount();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('releases composition and reader input for Steam blocking UI, then restores the page', async () => {
     vi.useFakeTimers();
     try {
@@ -184,7 +314,7 @@ describe('PortalView and PortalViewOuter', () => {
     },
   );
 
-  it.each(['url', 'files'] as const)(
+  it.each(['url', 'files', 'help'] as const)(
     'opens %s as a native modal and suspends the reader',
     (activePanel) => {
       vi.mocked(useGlobalState).mockReturnValue([
