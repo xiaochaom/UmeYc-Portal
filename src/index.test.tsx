@@ -39,6 +39,7 @@ describe('plugin entrypoint', () => {
     const { routerHook } = await import('./__mocks__/decky-api');
 
     expect(plugin.name).toBe('UmeYc-Portal');
+    expect(plugin).toHaveProperty('alwaysRender', true);
     expect(routerHook.addGlobalComponent).toHaveBeenCalledWith('Portal', expect.any(Function));
 
     (plugin as unknown as { onDismount: () => void }).onDismount();

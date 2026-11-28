@@ -62,6 +62,9 @@ export default definePlugin(() => {
 
   return {
     name: 'UmeYc-Portal',
+    // Native foreground BrowserViews can leave Decky's tab visibility stale.
+    // Keep settings mounted so reopening the sidebar cannot leave only a title.
+    alwaysRender: true,
     titleView: <div className={quickAccessMenuClasses.Title}>UmeYc-Portal</div>,
     icon: <FaTv />,
     content: (

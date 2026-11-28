@@ -1,5 +1,11 @@
 # UmeYc-Portal 实机验证记录
 
+## 1.0.0-zh-cn.30：设置页不再因 Decky 可见状态滞后而空白
+
+2026-11-28 在用户报告的空白现场，插件正常加载、当前阅读器为侧栏、菜单为 2，QuickAccess 文档 hidden=false，但 Decky 的 QuickAccessVisibleStateProvider 内部 visible=false。PluginView 使用 (visible || activePlugin.alwaysRender) 决定是否挂载内容，因此只有标题和返回键，退出再进入也仍为空白。已排除 React 格式差异：Decky JSX 和所有插件均使用同一 React 19.1.1 元素格式。
+
+使用 @decky/api 支持的 alwaysRender:true 保持设置内容挂载；阅读器自身显隐逻辑保持原样。先在现场启用该选项，设置按钮立即恢复，再将选项写入入口并安装 .30，重载后确认本地文件、扫码传送、使用说明正常。Deck 注入回归刻意将 Decky tab 的 qAMVisibilitySetter 设为 false，设置仍显示；退出再进入、连续三次最大窗口→收起→展开→侧栏、实际点击使用说明并关闭后返回 Decky 页均通过。初次脚本关闭弹窗后 Steam 选中了通知标签，调整为明确返回 Decky 标签后验证通过。最终恢复原网页、侧栏状态和设置页。157 项前端测试、ESLint、TypeScript、Prettier、Rollup 通过。
+
 ## 1.0.0-zh-cn.29：最大窗口使用原生前景层级接收触摸
 
 2026-11-28 排查 .28 最大窗口右侧触摸暂停不稳定。用户实体触摸记录显示，事件落在 QuickAccess_uid2 的 HTML 上，视频网页没有收到事件。CSS visibility 隐藏了快捷栏画面，但原生弹窗仍接收输入。
